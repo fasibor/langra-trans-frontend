@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { bookingsAPI, paymentsAPI } from '../../api';
 import {
   formatDate, formatTime, formatCurrency,
@@ -37,6 +37,7 @@ export default function BookingDetail() {
   const [error,      setError]      = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [cancelling, setCancelling] = useState(false);
+  const [showCancelModal, setShowCancelModal] = useState(false);
 
   // Payment form state
   const [payRef,      setPayRef]      = useState('');
@@ -133,7 +134,7 @@ export default function BookingDetail() {
 
   // ── Cancel booking ────────────────────────────────────────────────────────
   const handleCancel = async () => {
-    if (!window.confirm('Are you sure you want to cancel this booking?')) return;
+    setShowCancelModal(false);
     setCancelling(true);
     try {
       await bookingsAPI.cancel(id);
@@ -385,10 +386,27 @@ export default function BookingDetail() {
 
       {/* ── Cancel ── */}
       {isPending && (
-        <button onClick={handleCancel} disabled={cancelling} className="btn-danger w-full">
+        <button onClick={() => setShowCancelModal(true)} disabled={cancelling} className="btn-danger w-full">
           {cancelling ? 'Cancelling…' : 'Cancel Booking'}
         </button>
       )}
+      {/* Cancel booking confirm modal */}
+      <Modal open={showCancelModal} onClose={() => setShowCancelModal(false)} title="Cancel Booking" maxWidth="max-w-sm">
+        <div className="space-y-4">
+          <div className="p-3 bg-red-50 border border-red-100 rounded-xl">
+            <p className="text-sm text-red-700">
+              Are you sure you want to cancel this booking?
+              {booking?.booking_status === 'PENDING_PAYMENT' && ' Your seat will be released immediately.'}
+            </p>
+          </div>
+          <div className="flex gap-3">
+            <button onClick={() => setShowCancelModal(false)} className="btn-secondary flex-1">Keep Booking</button>
+            <button onClick={handleCancel} disabled={cancelling} className="btn-danger flex-1">
+              {cancelling ? 'Cancelling…' : 'Cancel Booking'}
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

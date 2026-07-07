@@ -124,7 +124,7 @@ export default function Dashboard() {
             <div>
               <p className="font-semibold text-dark-800 text-sm">My Trips</p>
               <p className="text-slate-400 text-xs">
-                {loading ? '...' : `${data?.total ?? bookings.length} booking${(data?.total ?? bookings.length) !== 1 ? 's' : ''}`}
+                {loading ? '...' : `${data?.total ?? 0} booking${(data?.total ?? 0) !== 1 ? 's' : ''}`}
               </p>
             </div>
           </Link>

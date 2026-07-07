@@ -1,0 +1,16 @@
+{
+  "name": "Langra Trans",
+  "short_name": "Langra Trans",
+  "description": "Book your Lagos bus seat — Squad Langra Transportation Limited",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f8fafc",
+  "theme_color": "#ea580c",
+  "orientation": "portrait",
+  "icons": [
+    { "src": "/logo.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/logo.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ],
+  "categories": ["travel", "transportation"],
+  "lang": "en-NG"
+}

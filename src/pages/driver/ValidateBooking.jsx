@@ -1,216 +1,239 @@
 import { useState, useRef, useEffect } from 'react';
 import { boardingAPI } from '../../api';
-import { getErrorMessage } from '../../utils';
-import { ScanLine, CheckCircle, XCircle, AlertTriangle, RotateCcw, Keyboard } from 'lucide-react';
+import { getErrorMessage, formatCurrency } from '../../utils';
+import { Modal } from '../../components/ui/index.jsx';
+import toast from 'react-hot-toast';
+import { ScanLine, Keyboard, CheckCircle, XCircle, AlertTriangle, RefreshCw, User, Clock } from 'lucide-react';
 
-const STATUS_CONFIG = {
-  BOARDED: {
-    icon: CheckCircle,
-    bg: 'bg-emerald-50',
-    border: 'border-emerald-200',
-    iconColor: 'text-emerald-500',
-    title: '✓ Valid Ticket — Boarded',
-    titleColor: 'text-emerald-700',
-  },
-  ALREADY_USED: {
-    icon: AlertTriangle,
-    bg: 'bg-amber-50',
-    border: 'border-amber-200',
-    iconColor: 'text-amber-500',
-    title: '⚠ Already Boarded',
-    titleColor: 'text-amber-700',
-  },
-  INVALID: {
-    icon: XCircle,
-    bg: 'bg-red-50',
-    border: 'border-red-200',
-    iconColor: 'text-red-500',
-    title: '✗ Invalid Ticket',
-    titleColor: 'text-red-700',
-  },
+const RESULT_TYPES = {
+  BOARDED:      { icon: CheckCircle,   color: 'text-emerald-500', bg: 'bg-emerald-50 border-emerald-200', label: 'Valid — Boarded' },
+  ALREADY_USED: { icon: AlertTriangle, color: 'text-amber-500',   bg: 'bg-amber-50 border-amber-200',     label: 'Already Boarded' },
+  INVALID:      { icon: XCircle,       color: 'text-red-500',     bg: 'bg-red-50 border-red-200',         label: 'Invalid Ticket' },
 };
 
 export default function ValidateBooking() {
-  const [code, setCode] = useState('');
-  const [result, setResult] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [scanHistory, setScanHistory] = useState([]);
-  const inputRef = useRef(null);
+  const [mode,       setMode]       = useState('manual'); // 'manual' | 'scanner'
+  const [code,       setCode]       = useState('');
+  const [loading,    setLoading]    = useState(false);
+  const [result,     setResult]     = useState(null);
+  const [confirmModal, setConfirmModal] = useState(null); // { code }
+  const [scanHistory, setScanHistory]  = useState([]);
+  const inputRef   = useRef(null);
+  const scannerRef = useRef(null);
+  const html5QrRef = useRef(null);
 
-  // Auto-focus input on mount
+  // Auto-focus input in manual mode
   useEffect(() => {
-    inputRef.current?.focus();
-  }, []);
+    if (mode === 'manual' && inputRef.current) inputRef.current.focus();
+  }, [mode, result]);
 
-  const handleValidate = async (e) => {
-    e?.preventDefault();
-    const trimmed = code.trim().toUpperCase();
-    if (!trimmed) return;
+  // Start QR scanner
+  useEffect(() => {
+    if (mode !== 'scanner') return;
+
+    let scanner;
+    import('html5-qrcode').then(({ Html5Qrcode }) => {
+      if (!scannerRef.current) return;
+      scanner = new Html5Qrcode('qr-reader');
+      html5QrRef.current = scanner;
+
+      scanner.start(
+        { facingMode: 'environment' },
+        { fps: 10, qrbox: { width: 250, height: 250 } },
+        (decodedText) => {
+          // QR contains JSON or just the booking code
+          let bookingCode = decodedText.trim().toUpperCase();
+          try {
+            const parsed = JSON.parse(decodedText);
+            bookingCode = (parsed.code || parsed.booking_code || decodedText).trim().toUpperCase();
+          } catch { /* plain text code */ }
+
+          scanner.stop().catch(() => {});
+          setMode('manual');
+          setCode(bookingCode);
+          handleValidate(bookingCode);
+        },
+        () => { /* scan errors are normal — ignore */ }
+      ).catch(() => {
+        toast.error('Could not access camera. Please use manual entry.');
+        setMode('manual');
+      });
+    });
+
+    return () => {
+      if (html5QrRef.current) {
+        html5QrRef.current.stop().catch(() => {});
+        html5QrRef.current = null;
+      }
+    };
+  }, [mode]);
+
+  const codeRef = useRef('');
+  codeRef.current = code;
+
+  const handleValidate = async (bookingCode) => {
+    const trimmed = (bookingCode || codeRef.current).trim().toUpperCase();
+    if (!trimmed) { toast.error('Enter a booking code.'); return; }
+    if (loading) return;
 
     setLoading(true);
     setResult(null);
-
     try {
       const res = await boardingAPI.validate(trimmed);
-      const data = {
-        ...res.data,
-        timestamp: new Date().toLocaleTimeString('en-NG', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
-        code: trimmed,
-      };
-      setResult(data);
-      setScanHistory(prev => [data, ...prev].slice(0, 20));
+      const data = res.data;
+      setResult({ ...data, code: trimmed });
+      setScanHistory(h => [{ code: trimmed, status: data.status, passenger: data.passenger?.name || '—', time: new Date() }, ...h.slice(0, 19)]);
+      setCode('');
+      if (data.valid) toast.success('✅ Passenger boarded!');
     } catch (err) {
-      const errData = err.response?.data || {};
-      const data = {
-        valid: false,
-        status: errData.status || 'INVALID',
-        message: errData.message || getErrorMessage(err),
-        passenger: errData.passenger,
-        timestamp: new Date().toLocaleTimeString('en-NG', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
-        code: trimmed,
-      };
-      setResult(data);
-      setScanHistory(prev => [data, ...prev].slice(0, 20));
+      const msg = err.response?.data?.message || 'Validation failed.';
+      const status = err.response?.data?.status || 'INVALID';
+      setResult({ valid: false, status, message: msg, code: trimmed });
+      setScanHistory(h => [{ code: trimmed, status, passenger: err.response?.data?.passenger?.name || '—', time: new Date() }, ...h.slice(0, 19)]);
+      setCode('');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleReset = () => {
-    setResult(null);
-    setCode('');
-    setTimeout(() => inputRef.current?.focus(), 100);
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    setConfirmModal({ code: code.trim().toUpperCase() });
   };
 
-  const config = result ? STATUS_CONFIG[result.status] || STATUS_CONFIG.INVALID : null;
+  const confirmAndValidate = () => {
+    const c = confirmModal?.code;
+    setConfirmModal(null);
+    handleValidate(c);
+  };
+
+  const statusColors = { BOARDED: 'text-emerald-400', ALREADY_USED: 'text-amber-400', INVALID: 'text-red-400' };
 
   return (
-    <div className="space-y-5">
-      <div>
-        <h1 className="font-display font-bold text-2xl text-dark-900">Boarding Validation</h1>
-        <p className="text-slate-400 text-sm mt-1">Enter or scan passenger booking codes</p>
+    <div className="space-y-4">
+      <div className="pt-2">
+        <h1 className="font-display font-bold text-2xl text-white">Boarding Validation</h1>
+        <p className="text-slate-400 text-sm mt-0.5">Scan QR code or enter booking code</p>
       </div>
 
-      {/* Input form */}
-      {!result ? (
-        <form onSubmit={handleValidate} className="card space-y-4">
-          <div className="text-center py-2">
-            <div className="w-16 h-16 bg-dark-800 rounded-2xl flex items-center justify-center mx-auto mb-3">
-              <ScanLine size={30} className="text-brand-400" />
-            </div>
-            <h2 className="font-semibold text-dark-800">Scan or Enter Code</h2>
-            <p className="text-slate-400 text-sm mt-1">Type the booking code manually or scan the QR</p>
-          </div>
-
-          <div>
-            <label className="label flex items-center gap-2">
-              <Keyboard size={14} />
-              Booking Code
-            </label>
-            <input
-              ref={inputRef}
-              type="text"
-              className="input-field text-center text-xl font-display font-bold tracking-widest uppercase"
-              placeholder="LT-XXXXXX"
-              value={code}
-              onChange={e => setCode(e.target.value.toUpperCase())}
-              maxLength={9}
-              autoComplete="off"
-              autoCapitalize="characters"
-            />
-            <p className="text-xs text-slate-400 text-center mt-1">Format: LT-XXXXXX (e.g. LT-8F2A9K)</p>
-          </div>
-
-          <button
-            type="submit"
-            disabled={loading || !code.trim()}
-            className="btn-primary w-full text-lg py-4"
-          >
-            {loading ? 'Validating...' : 'Validate Ticket'}
+      {/* Mode tabs */}
+      <div className="grid grid-cols-2 gap-2 bg-dark-700 p-1 rounded-xl">
+        {[['manual', Keyboard, 'Manual Entry'], ['scanner', ScanLine, 'QR Scanner']].map(([m, Icon, label]) => (
+          <button key={m} onClick={() => { setMode(m); setResult(null); setCode(''); }}
+            className={`flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-semibold transition-all ${
+              mode === m ? 'bg-brand-600 text-white shadow-md' : 'text-slate-400 hover:text-white'
+            }`}>
+            <Icon size={16} />{label}
           </button>
-        </form>
-      ) : (
-        /* Result display */
-        <div className={`card border-2 ${config.border} ${config.bg} space-y-4`}>
-          <div className="text-center py-2">
-            <config.icon size={56} className={`${config.iconColor} mx-auto mb-3`} />
-            <h2 className={`font-display font-bold text-xl ${config.titleColor}`}>{config.title}</h2>
-            <p className={`text-sm mt-1 ${config.titleColor} opacity-70`}>{result.message}</p>
+        ))}
+      </div>
+
+      {/* Scanner view */}
+      {mode === 'scanner' && (
+        <div className="bg-dark-700 rounded-2xl overflow-hidden border border-dark-600">
+          <div id="qr-reader" ref={scannerRef} className="w-full" />
+          <div className="p-4 text-center">
+            <p className="text-slate-400 text-sm">Point your camera at the passenger's QR code</p>
           </div>
-
-          {result.passenger && (
-            <div className="bg-white rounded-2xl p-4 space-y-3">
-              <div className="text-center border-b border-slate-100 pb-3">
-                <p className="text-xs text-slate-400 uppercase tracking-wide font-semibold">Passenger</p>
-                <p className="font-display font-bold text-xl text-dark-900 mt-1">{result.passenger.name}</p>
-                <p className="text-slate-500 text-sm">{result.passenger.phone}</p>
-              </div>
-              <div className="grid grid-cols-2 gap-3 text-sm">
-                <div>
-                  <p className="text-xs text-slate-400">Route</p>
-                  <p className="font-semibold text-dark-800">{result.passenger.route}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-slate-400">Code</p>
-                  <p className="font-mono font-bold text-brand-600">{result.passenger.booking_code || result.code}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-slate-400">Pickup</p>
-                  <p className="font-semibold text-dark-800">{result.passenger.pickup}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-slate-400">Drop-off</p>
-                  <p className="font-semibold text-dark-800">{result.passenger.dropoff}</p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          <div className="flex items-center justify-between text-xs text-slate-400">
-            <span>Scanned at {result.timestamp}</span>
-            <span className="font-mono">{result.code}</span>
-          </div>
-
-          <button onClick={handleReset} className="btn-primary w-full flex items-center justify-center gap-2">
-            <RotateCcw size={18} />
-            Scan Next Passenger
-          </button>
         </div>
       )}
 
+      {/* Manual entry */}
+      {mode === 'manual' && (
+        <form onSubmit={handleSubmit}>
+          <div className="bg-dark-700 rounded-2xl p-4 border border-dark-600">
+            <label className="block text-xs font-bold text-slate-400 uppercase tracking-wide mb-2">Booking Code</label>
+            <input
+              ref={inputRef}
+              type="text"
+              className="w-full bg-dark-800 border border-dark-600 text-white font-mono font-bold text-2xl tracking-widest text-center rounded-xl px-4 py-4 focus:outline-none focus:ring-2 focus:ring-brand-500 uppercase placeholder-slate-600"
+              placeholder="LT-XXXXXX"
+              value={code}
+              onChange={e => setCode(e.target.value.toUpperCase())}
+              maxLength={10}
+              autoComplete="off"
+              spellCheck={false}
+            />
+            <button type="submit" disabled={loading || !code.trim()}
+              className="btn-primary w-full mt-3 flex items-center justify-center gap-2">
+              {loading ? <><RefreshCw size={16} className="animate-spin" />Validating…</> : 'Validate Ticket'}
+            </button>
+          </div>
+        </form>
+      )}
+
+      {/* Result card */}
+      {result && (() => {
+        const cfg = RESULT_TYPES[result.status] || RESULT_TYPES.INVALID;
+        const Icon = cfg.icon;
+        return (
+          <div className={`rounded-2xl p-5 border-2 ${cfg.bg}`}>
+            <div className="flex items-center gap-3 mb-3">
+              <Icon size={28} className={cfg.color} />
+              <div>
+                <p className={`font-display font-bold text-lg ${cfg.color}`}>{cfg.label}</p>
+                <p className="text-slate-600 text-sm">{result.message}</p>
+              </div>
+            </div>
+            {result.passenger && (
+              <div className="bg-white rounded-xl p-3 space-y-2">
+                <div className="flex items-center gap-2">
+                  <User size={14} className="text-slate-400" />
+                  <p className="font-bold text-dark-800">{result.passenger.name}</p>
+                  <p className="text-slate-400 text-xs">{result.passenger.phone}</p>
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  {[['Route', result.passenger.route], ['Code', result.code], ['Pickup', result.passenger.pickup], ['Drop-off', result.passenger.dropoff]].map(([l, v]) => (
+                    <div key={l}><p className="text-slate-400">{l}</p><p className="font-semibold text-dark-800">{v}</p></div>
+                  ))}
+                </div>
+                {result.passenger.amount && (
+                  <p className="text-xs text-slate-500 border-t border-slate-100 pt-2">
+                    Fare paid: <span className="font-bold text-dark-800">{formatCurrency(result.passenger.amount)}</span>
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+        );
+      })()}
+
       {/* Scan history */}
       {scanHistory.length > 0 && (
-        <div>
-          <h3 className="font-semibold text-dark-800 mb-3">Recent Scans</h3>
-          <div className="space-y-2">
-            {scanHistory.map((scan, idx) => (
-              <div
-                key={idx}
-                className={`card flex items-center gap-3 py-3 border ${
-                  scan.status === 'BOARDED' ? 'border-emerald-100 bg-emerald-50/30' :
-                  scan.status === 'ALREADY_USED' ? 'border-amber-100 bg-amber-50/30' :
-                  'border-red-100 bg-red-50/30'
-                }`}
-              >
-                {scan.status === 'BOARDED' ? (
-                  <CheckCircle size={18} className="text-emerald-500 shrink-0" />
-                ) : scan.status === 'ALREADY_USED' ? (
-                  <AlertTriangle size={18} className="text-amber-500 shrink-0" />
-                ) : (
-                  <XCircle size={18} className="text-red-500 shrink-0" />
-                )}
+        <div className="bg-dark-700 rounded-2xl p-4 border border-dark-600">
+          <p className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-3">Scan History</p>
+          <div className="space-y-2 max-h-48 overflow-y-auto">
+            {scanHistory.map((h, i) => (
+              <div key={i} className="flex items-center gap-3 text-sm py-1.5 border-b border-dark-600 last:border-0">
+                <span className={`text-lg ${h.status === 'BOARDED' ? '✅' : h.status === 'ALREADY_USED' ? '⚠️' : '❌'}`}>
+                  {h.status === 'BOARDED' ? '✅' : h.status === 'ALREADY_USED' ? '⚠️' : '❌'}
+                </span>
                 <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-dark-800 text-sm truncate">
-                    {scan.passenger?.name || 'Unknown'}
-                  </p>
-                  <p className="font-mono text-xs text-slate-400">{scan.code}</p>
+                  <p className="text-white font-mono font-bold text-xs">{h.code}</p>
+                  <p className="text-slate-500 text-xs truncate">{h.passenger}</p>
                 </div>
-                <span className="text-xs text-slate-400 shrink-0">{scan.timestamp}</span>
+                <p className="text-slate-600 text-xs shrink-0">{h.time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
               </div>
             ))}
           </div>
         </div>
       )}
+
+      {/* Confirm modal */}
+      <Modal open={!!confirmModal} onClose={() => setConfirmModal(null)} title="Confirm Boarding" maxWidth="max-w-sm">
+        <div className="space-y-4">
+          <p className="text-slate-600 text-sm">Validate boarding for code:</p>
+          <div className="bg-slate-50 rounded-xl p-4 text-center">
+            <p className="font-display font-bold text-3xl tracking-widest text-dark-900">{confirmModal?.code}</p>
+          </div>
+          <div className="flex gap-3">
+            <button onClick={() => setConfirmModal(null)} className="btn-secondary flex-1">Cancel</button>
+            <button onClick={confirmAndValidate} className="btn-primary flex-1 flex items-center justify-center gap-2">
+              <CheckCircle size={16} /> Confirm
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

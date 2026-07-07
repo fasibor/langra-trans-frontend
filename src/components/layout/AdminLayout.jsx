@@ -2,7 +2,7 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import {
   LayoutDashboard, MapPin, Calendar, CreditCard,
-  Users, ClipboardList, LogOut, Menu, X, Bus
+  Users, ClipboardList, LogOut, Menu, X, Bus, Megaphone
 } from 'lucide-react';
 import { useState } from 'react';
 import toast from 'react-hot-toast';

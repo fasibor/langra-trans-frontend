@@ -24,7 +24,7 @@ export default function BookRide() {
 
   // Load routes on mount
   useEffect(() => {
-    routesAPI.getAll().then(res => setRoutes(res.data.routes)).catch(console.error);
+    routesAPI.getAll().then(res => setRoutes(res.data.routes)).catch(() => toast.error('Failed to load routes. Please refresh.'));
   }, []);
 
   // Load trips when route + date selected
@@ -33,7 +33,7 @@ export default function BookRide() {
       setLoading(true);
       tripsAPI.getAvailable({ route_id: selected.route.id, date: selected.date })
         .then(res => setTrips(res.data.trips))
-        .catch(console.error)
+        .catch(() => toast.error('Failed to load trips.'))
         .finally(() => setLoading(false));
     }
   }, [selected.route, selected.date]);

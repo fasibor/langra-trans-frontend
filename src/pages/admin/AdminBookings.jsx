@@ -7,10 +7,10 @@ import { Search, ClipboardList, ChevronLeft, ChevronRight } from 'lucide-react';
 
 const PAGE_SIZE = 25;
 const STATUSES = [
-  { value: '',          label: 'All' },
-  { value: 'PENDING',   label: 'Pending' },
-  { value: 'CONFIRMED', label: 'Confirmed' },
-  { value: 'REJECTED',  label: 'Rejected' },
+  { value: '',                label: 'All' },
+  { value: 'PENDING',         label: 'Pending Payment' },
+  { value: 'CONFIRMED',       label: 'Confirmed' },
+  { value: 'REJECTED',        label: 'Rejected' },
 ];
 
 export default function AdminBookings() {

@@ -20,7 +20,7 @@ export default function RouteManagement() {
   const load = () => {
     routesAPI.getAllAdmin()
       .then(res => setRoutes(res.data.routes))
-      .catch(console.error)
+      .catch(() => toast.error('Failed to load routes.'))
       .finally(() => setLoading(false));
   };
 

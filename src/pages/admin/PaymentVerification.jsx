@@ -12,6 +12,7 @@ import {
 export default function PaymentVerification() {
   const [processing,    setProcessing]   = useState(null);
   const [rejectModal,   setRejectModal]  = useState(null);
+  const [approveTarget, setApproveTarget] = useState(null); // { id, passenger, amount }
   const [rejectReason,  setRejectReason] = useState('');
   const [lightbox,      setLightbox]     = useState(null); // proof image URL
 
@@ -22,8 +23,12 @@ export default function PaymentVerification() {
 
   const payments = data?.payments || [];
 
-  const handleApprove = async (paymentId) => {
-    if (!window.confirm('Approve this payment and confirm the booking?')) return;
+  // handleApprove is now replaced by setApproveTarget + confirmApprove modal flow
+
+  const confirmApprove = async () => {
+    if (!approveTarget) return;
+    const { id: paymentId } = approveTarget;
+    setApproveTarget(null);
     setProcessing(paymentId);
     try {
       const res = await paymentsAPI.verify(paymentId, { action: 'approve' });
@@ -141,6 +146,35 @@ export default function PaymentVerification() {
                   <p className="font-display font-bold text-dark-800 text-lg break-all tracking-wide">
                     {payment.reference_number}
                   </p>
+
+                  {/* Amount comparison */}
+                  <div className="mt-3 pt-3 border-t border-slate-100 space-y-1">
+                    <div className="flex justify-between text-xs">
+                      <span className="text-slate-400">Expected fare</span>
+                      <span className="font-bold text-dark-800">{formatCurrency(payment.expected_amount)}</span>
+                    </div>
+                    {payment.amount_received != null && (
+                      <>
+                        <div className="flex justify-between text-xs">
+                          <span className="text-slate-400">Amount received</span>
+                          <span className={`font-bold ${
+                            payment.payment_flag === 'UNDERPAID' ? 'text-red-600' :
+                            payment.payment_flag === 'OVERPAID'  ? 'text-amber-600' : 'text-emerald-600'
+                          }`}>{formatCurrency(payment.amount_received)}</span>
+                        </div>
+                        {payment.payment_flag && payment.payment_flag !== 'EXACT' && (
+                          <div className={`flex items-center gap-1.5 text-xs font-bold px-2 py-1 rounded-lg mt-1 ${
+                            payment.payment_flag === 'UNDERPAID' ? 'bg-red-50 text-red-700' :
+                            payment.payment_flag === 'OVERPAID'  ? 'bg-amber-50 text-amber-700' : 'bg-slate-50 text-slate-600'
+                          }`}>
+                            {payment.payment_flag === 'UNDERPAID' && '⚠ Underpaid by ' + formatCurrency(payment.expected_amount - payment.amount_received)}
+                            {payment.payment_flag === 'OVERPAID'  && '⚠ Overpaid by '  + formatCurrency(payment.amount_received - payment.expected_amount)}
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+
                   <p className="text-xs text-slate-400 mt-2">
                     Verify this reference in your GTBank portal before approving
                   </p>
@@ -207,7 +241,7 @@ export default function PaymentVerification() {
                   <XCircle size={18} /> Reject
                 </button>
                 <button
-                  onClick={() => handleApprove(payment.id)}
+                  onClick={() => setApproveTarget({ id: payment.id, passenger: payment.passenger_name, amount: payment.amount })}
                   disabled={!!processing}
                   className="flex-1 bg-emerald-600 text-white font-semibold px-6 py-3 rounded-xl hover:bg-emerald-700 active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                 >
@@ -221,6 +255,33 @@ export default function PaymentVerification() {
           ))}
         </div>
       )}
+
+      {/* ── Approve confirm modal ── */}
+      <Modal
+        open={!!approveTarget}
+        onClose={() => !processing && setApproveTarget(null)}
+        title="Approve Payment"
+        maxWidth="max-w-sm"
+      >
+        <div className="space-y-4">
+          <div className="flex items-start gap-3 p-3 bg-emerald-50 border border-emerald-100 rounded-xl">
+            <CheckCircle size={18} className="text-emerald-600 shrink-0 mt-0.5" />
+            <div>
+              <p className="font-semibold text-emerald-700 text-sm">Confirm approval for:</p>
+              <p className="text-emerald-600 text-sm font-bold mt-0.5">{approveTarget?.passenger}</p>
+              <p className="text-emerald-500 text-xs mt-0.5">{formatCurrency(approveTarget?.amount || 0)}</p>
+              <p className="text-emerald-600 text-xs mt-2">This will generate a booking code and QR ticket for the passenger immediately.</p>
+            </div>
+          </div>
+          <div className="flex gap-3">
+            <button onClick={() => setApproveTarget(null)} disabled={!!processing} className="btn-secondary flex-1">Cancel</button>
+            <button onClick={confirmApprove} disabled={!!processing}
+              className="flex-1 bg-emerald-600 text-white font-semibold px-6 py-3 rounded-xl hover:bg-emerald-700 active:scale-95 transition-all disabled:opacity-50">
+              {processing ? 'Processing…' : 'Confirm Approve'}
+            </button>
+          </div>
+        </div>
+      </Modal>
 
       {/* ── Rejection reason modal ── */}
       <Modal

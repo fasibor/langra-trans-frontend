@@ -3,6 +3,7 @@ import { useOnline } from './hooks/useOnline';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from './context/AuthContext';
+import { NotificationProvider } from './context/NotificationContext';
 import { ProtectedRoute, PublicRoute } from './components/layout/ProtectedRoute';
 import { PassengerLayout } from './components/layout/PassengerLayout';
 import { AdminLayout } from './components/layout/AdminLayout';
@@ -31,6 +32,17 @@ const RouteManagement   = lazy(() => import('./pages/admin/RouteManagement'));
 const TripManagement    = lazy(() => import('./pages/admin/TripManagement'));
 const PaymentVerification = lazy(() => import('./pages/admin/PaymentVerification'));
 const AdminBookings     = lazy(() => import('./pages/admin/AdminBookings'));
+
+// Passenger extras
+const Announcements  = lazy(() => import('./pages/passenger/Announcements'));
+const BusTracking    = lazy(() => import('./pages/passenger/BusTracking'));
+const Notifications  = lazy(() => import('./pages/passenger/Notifications'));
+const Settings       = lazy(() => import('./pages/passenger/Settings'));
+const ForgotPassword = lazy(() => import('./pages/ForgotPassword'));
+const ResetPassword  = lazy(() => import('./pages/ResetPassword'));
+
+// Admin extras
+const AdminAnnouncements = lazy(() => import('./pages/admin/AdminAnnouncements'));
 
 // Driver pages — lazy loaded (separate chunk)
 const DriverTrips     = lazy(() => import('./pages/driver/DriverTrips'));
@@ -78,6 +90,7 @@ export default function App() {
     <ErrorBoundary>
       <OfflineBanner />
       <AuthProvider>
+        <NotificationProvider>
         <Router>
           <Toaster
             position="top-center"
@@ -109,24 +122,34 @@ export default function App() {
               <Route path="/bookings"       element={<PassengerPage><BookingHistory /></PassengerPage>} />
               <Route path="/bookings/:id"   element={<PassengerPage><BookingDetail /></PassengerPage>} />
               <Route path="/profile"        element={<PassengerPage><Profile /></PassengerPage>} />
+              <Route path="/announcements"  element={<PassengerPage><Announcements /></PassengerPage>} />
+              <Route path="/notifications"  element={<PassengerPage><Notifications /></PassengerPage>} />
+              <Route path="/settings"       element={<PassengerPage><Settings /></PassengerPage>} />
+              <Route path="/tracking/:id"  element={<BusTracking />} />
 
               {/* Admin */}
               <Route path="/admin"           element={<AdminPage><AdminDashboard /></AdminPage>} />
               <Route path="/admin/routes"    element={<AdminPage><RouteManagement /></AdminPage>} />
               <Route path="/admin/trips"     element={<AdminPage><TripManagement /></AdminPage>} />
               <Route path="/admin/payments"  element={<AdminPage><PaymentVerification /></AdminPage>} />
-              <Route path="/admin/bookings"  element={<AdminPage><AdminBookings /></AdminPage>} />
+              <Route path="/admin/bookings"       element={<AdminPage><AdminBookings /></AdminPage>} />
+              <Route path="/admin/announcements"  element={<AdminPage><AdminAnnouncements /></AdminPage>} />
 
               {/* Driver */}
               <Route path="/driver"                    element={<DriverPage><DriverTrips /></DriverPage>} />
               <Route path="/driver/validate"           element={<DriverPage><ValidateBooking /></DriverPage>} />
               <Route path="/driver/manifest/:tripId"   element={<DriverPage><DriverManifest /></DriverPage>} />
 
+              {/* Password recovery */}
+              <Route path="/forgot-password" element={<PublicRoute><ForgotPassword /></PublicRoute>} />
+              <Route path="/reset-password"  element={<ResetPassword />} />
+
               {/* Fallback */}
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </Suspense>
         </Router>
+        </NotificationProvider>
       </AuthProvider>
     </ErrorBoundary>
   );
