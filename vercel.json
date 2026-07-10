@@ -6,6 +6,6 @@
     { "source": "/(.*)", "destination": "/index.html" }
   ],
   "env": {
-    "VITE_API_URL": "https://your-backend.onrender.com/api"
+    "VITE_API_URL": "https://langra-trans-api.onrender.com/api"
   }
 }
