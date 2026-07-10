@@ -34,7 +34,13 @@ export default function ValidateBooking() {
     let scanner;
     import('html5-qrcode').then(({ Html5Qrcode }) => {
       if (!scannerRef.current) return;
-      scanner = new Html5Qrcode('qr-reader');
+      try {
+        scanner = new Html5Qrcode('qr-reader');
+      } catch {
+        toast.error('Could not initialize scanner. Please use manual entry.');
+        setMode('manual');
+        return;
+      }
       html5QrRef.current = scanner;
 
       scanner.start(
@@ -58,6 +64,9 @@ export default function ValidateBooking() {
         toast.error('Could not access camera. Please use manual entry.');
         setMode('manual');
       });
+    }).catch(() => {
+      toast.error('Scanner unavailable. Please use manual entry.');
+      setMode('manual');
     });
 
     return () => {

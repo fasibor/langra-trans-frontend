@@ -1,12 +1,12 @@
 import { useState } from 'react';
-import { tripsAPI, routesAPI } from '../../api';
+import { tripsAPI, routesAPI, adminAPI } from '../../api';
 import { useAsync } from '../../hooks/useAsync';
 import { formatDate, formatTime, formatCurrency, getErrorMessage } from '../../utils';
 import { Modal, CardSkeleton, ErrorState } from '../../components/ui/index.jsx';
 import toast from 'react-hot-toast';
 import { Plus, Calendar, Clock, Users, Eye, X, RefreshCw, AlertTriangle, CheckCircle } from 'lucide-react';
 
-const EMPTY_FORM = { route_id: '', travel_date: '', departure_time: '', capacity: 14 };
+const EMPTY_FORM = { route_id: '', travel_date: '', departure_time: '', capacity: 14, driver_id: '' };
 
 export default function TripManagement() {
   const [showForm,     setShowForm]     = useState(false);
@@ -31,11 +31,14 @@ export default function TripManagement() {
   const { data: routesData } = useAsync(() => routesAPI.getAllAdmin(), []);
   const routes = (routesData?.routes || []).filter(r => r.is_active);
 
+  const { data: driversData } = useAsync(() => adminAPI.getDrivers(), []);
+  const drivers = driversData?.drivers || [];
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSaving(true);
     try {
-      await tripsAPI.create({ ...form, capacity: parseInt(form.capacity) });
+      await tripsAPI.create({ ...form, capacity: parseInt(form.capacity), driver_id: form.driver_id || null });
       toast.success('Trip scheduled successfully');
       setForm(EMPTY_FORM);
       setShowForm(false);
@@ -263,6 +266,13 @@ export default function TripManagement() {
             <label className="label">Bus Capacity (seats)</label>
             <input type="number" className="input-field" min="1" max="100" value={form.capacity}
               onChange={e => setForm(f => ({...f, capacity: e.target.value}))} required />
+          </div>
+          <div>
+            <label className="label">Assign Driver <span className="text-slate-400 font-normal">(optional)</span></label>
+            <select className="input-field" value={form.driver_id} onChange={e => setForm(f => ({...f, driver_id: e.target.value}))}>
+              <option value="">— No driver assigned —</option>
+              {drivers.map(d => <option key={d.id} value={d.id}>{d.name} · {d.phone}</option>)}
+            </select>
           </div>
           <div className="flex gap-3 pt-1">
             <button type="button" onClick={() => setShowForm(false)} disabled={saving} className="btn-secondary flex-1">Cancel</button>

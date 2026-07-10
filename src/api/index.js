@@ -84,6 +84,11 @@ export const paymentsAPI = {
   verify:      (id, data)  => api.post(`/admin/payments/${id}/verify`, data),
 };
 
+// ── Admin helpers ────────────────────────────────────────────────
+export const adminAPI = {
+  getDrivers: () => api.get('/admin/drivers'),
+};
+
 // ── Boarding ────────────────────────────────────────────────────
 export const boardingAPI = {
   validate: (booking_code) => api.post('/boarding/validate', { booking_code }),
