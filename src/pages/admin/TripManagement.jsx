@@ -271,7 +271,7 @@ export default function TripManagement() {
             <label className="label">Assign Driver <span className="text-slate-400 font-normal">(optional)</span></label>
             <select className="input-field" value={form.driver_id} onChange={e => setForm(f => ({...f, driver_id: e.target.value}))}>
               <option value="">— No driver assigned —</option>
-              {drivers.map(d => <option key={d.id} value={d.id}>{d.name} · {d.phone}</option>)}
+              {drivers.filter(d => d.is_active).map(d => <option key={d.id} value={d.id}>{d.name} · {d.phone}</option>)}
             </select>
           </div>
           <div className="flex gap-3 pt-1">
