@@ -5,7 +5,7 @@ import {
   formatDate, formatTime, formatCurrency,
   getStatusBadgeClass, getStatusLabel, getErrorMessage,
 } from '../../utils';
-import { CardSkeleton, ErrorState, CopyButton } from '../../components/ui/index.jsx';
+import { CardSkeleton, ErrorState, CopyButton, Modal } from '../../components/ui/index.jsx';
 import { QRCodeSVG } from 'qrcode.react';
 import toast from 'react-hot-toast';
 import {
