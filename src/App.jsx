@@ -43,6 +43,7 @@ const ResetPassword  = lazy(() => import('./pages/ResetPassword'));
 
 // Admin extras
 const AdminAnnouncements = lazy(() => import('./pages/admin/AdminAnnouncements'));
+const AdminDrivers       = lazy(() => import('./pages/admin/AdminDrivers'));
 
 // Driver pages — lazy loaded (separate chunk)
 const DriverTrips     = lazy(() => import('./pages/driver/DriverTrips'));
@@ -134,6 +135,7 @@ export default function App() {
               <Route path="/admin/payments"  element={<AdminPage><PaymentVerification /></AdminPage>} />
               <Route path="/admin/bookings"       element={<AdminPage><AdminBookings /></AdminPage>} />
               <Route path="/admin/announcements"  element={<AdminPage><AdminAnnouncements /></AdminPage>} />
+              <Route path="/admin/drivers"        element={<AdminPage><AdminDrivers /></AdminPage>} />
 
               {/* Driver */}
               <Route path="/driver"                    element={<DriverPage><DriverTrips /></DriverPage>} />

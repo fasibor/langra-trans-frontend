@@ -1,15 +1,16 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useNotifications } from '../../context/NotificationContext';
-import { Home, MapPin, Clock, User, LogOut, Bell } from 'lucide-react';
+import { Home, MapPin, Clock, User, LogOut, Bell, Megaphone } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const navItems = [
-  { to: '/dashboard',  icon: Home,    label: 'Home' },
-  { to: '/book',       icon: MapPin,  label: 'Book' },
-  { to: '/bookings',   icon: Clock,   label: 'My Trips' },
-  { to: '/notifications', icon: Bell, label: 'Alerts', badge: true },
-  { to: '/profile',    icon: User,    label: 'Profile' },
+  { to: '/dashboard',     icon: Home,      label: 'Home' },
+  { to: '/book',          icon: MapPin,    label: 'Book' },
+  { to: '/bookings',      icon: Clock,     label: 'My Trips' },
+  { to: '/announcements', icon: Megaphone, label: 'News' },
+  { to: '/notifications', icon: Bell,      label: 'Alerts', badge: true },
+  { to: '/profile',       icon: User,      label: 'Profile' },
 ];
 
 export const PassengerLayout = ({ children }) => {

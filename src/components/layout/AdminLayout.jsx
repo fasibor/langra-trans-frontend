@@ -8,11 +8,13 @@ import { useState } from 'react';
 import toast from 'react-hot-toast';
 
 const navItems = [
-  { to: '/admin', icon: LayoutDashboard, label: 'Dashboard', exact: true },
-  { to: '/admin/routes', icon: MapPin, label: 'Routes' },
-  { to: '/admin/trips', icon: Calendar, label: 'Trips' },
-  { to: '/admin/payments', icon: CreditCard, label: 'Payments' },
-  { to: '/admin/bookings', icon: ClipboardList, label: 'Bookings' },
+  { to: '/admin',                icon: LayoutDashboard, label: 'Dashboard',     exact: true },
+  { to: '/admin/routes',         icon: MapPin,          label: 'Routes' },
+  { to: '/admin/trips',          icon: Calendar,        label: 'Trips' },
+  { to: '/admin/payments',       icon: CreditCard,      label: 'Payments' },
+  { to: '/admin/bookings',       icon: ClipboardList,   label: 'Bookings' },
+  { to: '/admin/announcements',  icon: Megaphone,       label: 'Announcements' },
+  { to: '/admin/drivers',        icon: Bus,             label: 'Drivers' },
 ];
 
 export const AdminLayout = ({ children }) => {

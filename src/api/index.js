@@ -86,7 +86,9 @@ export const paymentsAPI = {
 
 // ── Admin helpers ────────────────────────────────────────────────
 export const adminAPI = {
-  getDrivers: () => api.get('/admin/drivers'),
+  getDrivers:        ()         => api.get('/admin/drivers'),
+  createDriver:      (data)     => api.post('/admin/drivers', data),
+  toggleDriverStatus:(id)       => api.patch(`/admin/drivers/${id}/toggle`),
 };
 
 // ── Boarding ────────────────────────────────────────────────────
